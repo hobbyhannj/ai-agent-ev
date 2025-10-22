@@ -16,17 +16,26 @@ This repository contains a skeleton implementation of a Supervisor-based LangGra
 src/
   ev_market_supervisor/
     __init__.py
-    state.py
-    prompts.py
-    tools.py
-    supervisor.py
+    main.py
+    supervisor/
+      __init__.py
+      builder.py
     agents/
       __init__.py
       analysis.py
       validation.py
+    prompts/
+      __init__.py
+      prompts.py
+    states/
+      __init__.py
+      state.py
+    tools/
+      __init__.py
+      tools.py
 ```
 
-Extend each placeholder with domain-specific logic, tooling, and LangGraph wiring as your EV intelligence workflow evolves.
+Extend each placeholder with domain-specific logic, tooling, and LangGraph wiring as your EV intelligence workflow evolves. `main.py` contains the high-level `build_workflow` helper to assemble the graph and relies on the class-based skeleton in the `agents`, `prompts`, `states`, `tools`, and `supervisor` packages.
 
 ## Getting Started
 
@@ -36,5 +45,5 @@ Install dependencies:
 pip install -e .
 ```
 
-Then wire your preferred LLM client, implement the tool stubs, and call `build_supervisor_graph` to run the graph.
+Then wire your preferred LLM client, implement the tool stubs, and call `build_workflow` from `ev_market_supervisor.main` to compile the graph.
 # ai-agent-ev

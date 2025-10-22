@@ -1,40 +1,37 @@
-"""Builders for analysis agents managed by the supervisor."""
-
-from __future__ import annotations
-
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Protocol
 
 from langgraph.prebuilt import create_react_agent
 
-from ..prompts import get_analysis_prompt
-from ..state import AnalysisAgentName
-
-ANALYSIS_AGENT_SEQUENCE: Iterable[AnalysisAgentName] = (
+ANALYSIS_AGENT_SEQUENCE = [
     "market",
     "policy",
     "oem",
     "supply_chain",
-    "finance",
-)
+    "finance"
+    ]
+
+
+class PromptProvider(Protocol):
+    def render(self, agent_name: str) -> Any:
+        ...
 
 
 def build_analysis_agents(
     llm: Any,
-    tools: Optional[Iterable[Any]] = None,
-    overrides: Optional[Dict[AnalysisAgentName, str]] = None,
-) -> Dict[AnalysisAgentName, Any]:
-    """Create ReAct-style agents for each analysis role."""
-
-    agents: Dict[AnalysisAgentName, Any] = {}
+    prompts: PromptProvider,
+    tools: list[Any] | None = None,
+    overrides: dict[str, str] | None = None,
+) -> Dict[str, Any]:
+    """Build all analysis agents with LLM, tools, and prompt templates."""
+    agents: Dict[str, Any] = {}
     overrides = overrides or {}
 
     for name in ANALYSIS_AGENT_SEQUENCE:
-        prompt = overrides.get(name, get_analysis_prompt(name))
-        agent = create_react_agent(
-            llm=llm,
-            tools=list(tools or []),
-            prompt=prompt,
+        prompt_text = overrides.get(name, prompts.render(name))
+        agents[name] = create_react_agent(
+            model=llm,
+            tools=tools or [],
+            prompt=prompt_text,
         )
-        agents[name] = agent
 
     return agents
