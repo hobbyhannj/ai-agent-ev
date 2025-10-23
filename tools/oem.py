@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
 import aiohttp
 import feedparser
+from urllib.parse import quote_plus
 from langchain_tavily import TavilySearch
+
+
+logger = logging.getLogger(__name__)
 
 # -----------------------------
 # Configuration
@@ -36,8 +41,14 @@ async def _fetch_json(url: str, params=None, headers=None) -> Dict[str, Any]:
 # 1. Google News (RSS feed)
 # -----------------------------
 async def fetch_google_news(query: str) -> List[Dict[str, Any]]:
-    url = f"https://news.google.com/rss/search?q={query}+EV+Electric+Vehicle"
-    parsed = feedparser.parse(url)
+    encoded = quote_plus(f"{query} EV Electric Vehicle")
+    url = f"https://news.google.com/rss/search?q={encoded}"
+    try:
+        loop = asyncio.get_event_loop()
+        parsed = await loop.run_in_executor(None, feedparser.parse, url)
+    except Exception as exc:  # pragma: no cover - network failures
+        logger.warning("Google News fetch failed: %s", exc)
+        return []
     return [
         {"title": e.title, "link": e.link, "source": "Google News"}
         for e in parsed.entries[:10]
@@ -71,6 +82,7 @@ async def fetch_gdelt_news(query: str) -> List[Dict[str, Any]]:
     return [
         {"title": d.get("title", ""), "link": d.get("url", ""), "source": "GDELT"}
         for d in data.get("articles", [])
+        if d.get("url")
     ]
 
 
@@ -84,8 +96,9 @@ async def fetch_newsdata_news(query: str) -> List[Dict[str, Any]]:
     params = {"apikey": NEWSDATA_KEY, "q": query, "language": "en"}
     data = await _fetch_json(url, params=params)
     return [
-        {"title": a["title"], "link": a["link"], "source": "Newsdata.io"}
+        {"title": a["title"], "link": a.get("link"), "source": "Newsdata.io"}
         for a in data.get("results", [])
+        if a.get("link")
     ]
 
 
@@ -107,12 +120,25 @@ async def fetch_oem_insights_news(manufacturer: str) -> Dict[str, Any]:
     for res in results:
         if isinstance(res, list):
             merged.extend(res)
+        elif isinstance(res, Exception):
+            logger.warning("OEM news source failed: %s", res)
+
+    unique_articles: List[Dict[str, Any]] = []
+    seen_links: set[str] = set()
+    for article in merged:
+        link = article.get("link")
+        if not link:
+            continue
+        if link in seen_links:
+            continue
+        seen_links.add(link)
+        unique_articles.append(article)
 
     return {
         "source": "Async-News-Aggregator",
         "manufacturer": manufacturer,
-        "total_articles": len(merged),
-        "articles": merged[:30],
+        "total_articles": len(unique_articles),
+        "articles": unique_articles[:10],
     }
 
 
@@ -121,70 +147,54 @@ async def fetch_oem_insights_news(manufacturer: str) -> Dict[str, Any]:
 # -----------------------------
 tavily_tool = TavilySearch(k=3)
 
-_OEM_FALLBACK_DATA: Dict[str, Dict[str, Any]] = {
-    "hyundai": {
-        "headlines": [
-            "Hyundai plans $7.6B investment in US EV and battery capacity by 2026",
-            "Hyundai Motor inks cathode JV with LG Energy Solution for Georgia plant",
-        ],
-        "insights": [
-            "Expanding E-GMP platform output in Ulsan and Georgia for next-gen IONIQ models",
-            "Prioritising LFP cells for entry trims while keeping NCM chemistry for premium SUVs",
-        ],
-    },
-    "tesla": {
-        "headlines": [
-            "Tesla accelerates Dojo compute buildout to support FSD training",
-            "Berlin Gigafactory targets 500k Model Y capacity with new paint line",
-        ],
-        "insights": [
-            "Margin pressure driving fresh price adjustments in China and Europe",
-            "4680 ramp improving but still below target; battery supply supplemented via Panasonic",
-        ],
-    },
-}
-
-
 async def explore_oem_trends(
     manufacturer: str,
     timeframe: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Aggregate OEM-related news from multiple async sources with safe fallbacks."""
+    """Aggregate OEM-related news from multiple async sources (network-required)."""
 
     timeframe_part = timeframe or "past quarter"
-    fallback = _OEM_FALLBACK_DATA.get(manufacturer.lower())
-    articles: List[Any] = []
+    articles: List[Dict[str, Any]] = []
     tavily_data: Any = None
 
     try:
         aggregated = await fetch_oem_insights_news(manufacturer)
         articles = aggregated.get("articles", [])
+    except Exception as exc:  # pragma: no cover - network issues fallback
+        logger.warning("OEM aggregate fetch failed: %s", exc)
+
+    try:
         top_titles = [a.get("title", "") for a in articles if a.get("title")][:5]
         query = (
             f"{manufacturer} EV market strategy {timeframe_part}. "
             f"Recent headlines: {' | '.join(top_titles)}"
         )
         tavily_data = tavily_tool.invoke({"query": query})
-    except Exception as exc:  # pragma: no cover - network issues fallback
-        articles = fallback.get("headlines", []) if fallback else []  # type: ignore[assignment]
+    except Exception as exc:  # pragma: no cover - when Tavily unavailable
         tavily_data = {"error": str(exc)}
 
     insights: List[str]
-    if fallback:
-        insights = fallback["insights"]
+    if articles:
+        insights = [
+            "수집된 최신 뉴스 기반으로 OEM 전략을 파악하세요.",
+            "기사에 명시된 투자, 생산, 파트너십 동향을 중심으로 전략적 시사점을 도출하십시오.",
+        ]
     else:
         insights = [
-            "OEM news feed aggregated from Google, Naver, GDELT, and Newsdata",
-            "Refer to tavily_data for additional context",
+            "네트워크 데이터가 부족합니다. 추가 조사를 위해 수동으로 뉴스 소스를 확인하십시오.",
         ]
+
+    references = [a.get("link") for a in articles if a.get("link")]
+    references = [ref for ref in references if isinstance(ref, str)]
 
     return {
         "type": "oem_trend_brief",
         "manufacturer": manufacturer,
         "timeframe": timeframe_part,
-        "headlines": articles[:5] if articles and isinstance(articles[0], dict) else articles,
+        "articles": articles[:5],
         "insights": insights,
         "tavily": tavily_data,
+        "references": references,
     }
 
 
@@ -204,13 +214,13 @@ if __name__ == "__main__":
         brief = await explore_oem_trends("Hyundai", "2025")
         print("=== OEM BRIEF ===")
         for key, value in brief.items():
-            if key == "headlines":
-                print(f"{key.title()}:")
-                for headline in value:
-                    if isinstance(headline, dict):
-                        print(f"  - {headline.get('title', 'N/A')}")
+            if key == "articles":
+                print("기사 목록:")
+                for article in value:
+                    if isinstance(article, dict):
+                        print(f"  - {article.get('title', 'N/A')} -> {article.get('link', '')}")
                     else:
-                        print(f"  - {headline}")
+                        print(f"  - {article}")
             else:
                 print(f"{key.title()}: {value}")
 
