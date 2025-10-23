@@ -18,7 +18,7 @@ LangGraph 기반 멀티 에이전트 구조를 활용해 EV 시장과 관련된 
 1. **5개 레이어 병렬 데이터 수집**: 시장(Market), 정책(Policy), 완성차(OEM), 공급망(Supply Chain), 금융(Finance)
 2. **Cross-layer 상관관계 분석**: 예) 리튬 가격 상승 → 배터리 기업 수익성 및 주가 영향
 3. **다단계 검증 체계**: Cross-Layer Validation → Report Quality Check → Hallucination Check 순으로 신뢰도 확보
-~~4. 쿼리 캐싱: 유사 질문(유사도 > threshold)에 대해 응답 속도 향상~~
+4. ~~쿼리 캐싱: 유사 질문(유사도 > threshold)에 대해 응답 속도 향상~~ (설계 변경)
 5. **자동 PDF 패키징**: LLM이 메타데이터·차트를 설계하고 FastAPI 서비스를 통해 WeasyPrint PDF 생성
 
 ---
