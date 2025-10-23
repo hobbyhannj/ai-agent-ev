@@ -1,36 +1,87 @@
-# EV Market Intelligence Supervisor Skeleton
+# EV Market Supervisor (전기차 시장 인텔리전스 에이전트)
 
-This repository contains a skeleton implementation of a Supervisor-based LangGraph architecture for an EV Market Intelligence system. It provides structure, shared state definitions, agent prompts, and supervision safeguards that can be extended into a production-grade workflow.
+이 저장소는 **sk090-한정석-AI서비스-MINI-DAY-1** 과제로 진행한 "전기차 시장 트렌드 분석 Agent" 프로젝트의 코드와 문서를 포함합니다. LangGraph 기반 멀티 에이전트 구조를 활용해 EV 시장과 관련된 다층 데이터를 수집·교차 분석하고, 최종 결과를 PDF 보고서로 출력합니다.
 
-## Architecture Overview
+---
 
-- **Deterministic supervisor orchestration** coordinating analysis and validation agents in a fixed sequence.
-- **Five analysis agents** (Market, Policy, OEM, Supply Chain, Finance) built with ReAct-style prompts.
-- **Three validation agents** (Cross-layer Validation, Report Quality Check, Hallucination Check) reviewing outputs before publication.
-- **Shared state** tracks task inputs, intermediate notes, decisions, and retry counts to prevent infinite loops.
-- **Automatic PDF packaging**: the supervisor now asks the LLM for cover metadata, generates charts with Matplotlib, and streams a styled PDF via the FastAPI print service.
+## 1. 프로젝트 개요
+- **주제**: 전기차 시장 트렌드 분석 Agent 개발
+- **목적**: 사용자의 질문을 입력으로 받아 시장, 정책, OEM, 공급망, 금융 레이어 데이터를 종합 분석한 뒤 Mobility Briefing 스타일의 PDF 보고서를 자동 생성
+- **주요 활용처**: 전기차 산업을 추적하는 투자자, 애널리스트, 전략 기획 담당자
 
-## Repository Layout
+### 주제 선정 이유
+1. 전기차 산업은 정책, 제조사, 공급망, 금융이 복잡하게 얽혀 있어 단일 소스 분석으로는 한계가 존재
+2. LangGraph의 멀티 에이전트 구조가 레이어별 분석과 상호 검증에 적합
+3. 자동 생성된 심층 보고서는 실제 의사결정 업무에 즉시 적용 가능
 
+### 핵심 기능
+1. **5개 레이어 병렬 데이터 수집**: 시장(Market), 정책(Policy), 완성차(OEM), 공급망(Supply Chain), 금융(Finance)
+2. **Cross-layer 상관관계 분석**: 예) 리튬 가격 상승 → 배터리 기업 수익성 및 주가 영향
+3. **다단계 검증 체계**: Cross-Layer Validation → Report Quality Check → Hallucination Check 순으로 신뢰도 확보
+4. **쿼리 캐싱**: 유사 질문(유사도 > threshold)에 대해 응답 속도 향상
+5. **자동 PDF 패키징**: LLM이 메타데이터·차트를 설계하고 FastAPI 서비스를 통해 WeasyPrint PDF 생성
+
+---
+
+## 2. LangGraph 아키텍처
+LangGraph는 다음과 같은 순서로 동작합니다.
+
+```
+          ┌─────────────┐
+          │  Supervisor │  (최상위 조정자)
+          └──────┬──────┘
+                 │
+       ┌─────────▼─────────┐
+       │  Analysis Fan-out │  (병렬 분석 레이어)
+       └─────────┬─────────┘
+         market  policy  oem
+           │       │      │
+        supply_chain   finance
+                 │
+          ┌──────▼──────┐
+          │ Aggregation │  (공유 상태 취합)
+          └──────┬──────┘
+                 │
+       ┌─────────▼─────────┐
+       │ Validation Chain  │  (순차 검증 레이어)
+       └─────────┬─────────┘
+  cross_layer_validation
+             │
+  report_quality_check
+             │
+  hallucination_check
+             │
+          ┌──▼──┐
+          │ Exit│
+          └─────┘
+```
+
+- Supervisor는 사용자 지시를 바탕으로 다섯 개 분석 에이전트를 호출하고, 결과를 공유 상태(SupervisorState)에 통합합니다.
+- 검증 에이전트들은 순차적으로 실행되며 필요 시 재시도를 요청하거나 경고를 추가합니다.
+- 최종 보고서는 `main.py`에서 수집한 후 LLM 메타데이터 생성 → 차트 렌더링 → FastAPI PDF 서비스 호출 순으로 처리됩니다.
+
+---
+
+## 3. 저장소 구조
 ```
 .
 ├── agents/
 │   ├── __init__.py
-│   ├── analysis.py
-│   └── validation.py
-├── main.py
+│   ├── analysis.py             # 5개 분석 에이전트 정의
+│   └── validation.py           # 3개 검증 에이전트 정의
+├── main.py                     # LangGraph 실행 및 PDF 패키징 엔트리포인트
 ├── print/
 │   ├── __init__.py
-│   ├── app.py
-│   ├── main.py
+│   ├── app.py                 # FastAPI + WeasyPrint PDF 서비스
+│   ├── main.py                # uvicorn 실행 스크립트
 │   └── templates/
-│       └── report.html
+│       └── report.html        # Mobility Briefing 스타일 HTML 템플릿
 ├── states/
 │   ├── __init__.py
-│   └── state.py
+│   └── state.py               # SupervisorState 및 공유 상태 로직
 ├── supervisor/
 │   ├── __init__.py
-│   └── builder.py
+│   └── builder.py             # 워크플로 구축 헬퍼
 ├── templates/
 │   ├── __init__.py
 │   ├── market.py
@@ -43,116 +94,92 @@ This repository contains a skeleton implementation of a Supervisor-based LangGra
 │   └── hallucination_check.py
 ├── tools/
 │   ├── __init__.py
-│   └── tools.py
+│   └── tools.py               # 에이전트 보조 도구 스켈레톤
 ├── requirements.txt
 └── README.md
 ```
 
-`main.py` assembles the workflow, orchestrates the LangGraph execution, and (when `--pdf-output` is supplied) calls the FastAPI PDF service in `print/` with LLM-generated metadata and charts.
+---
 
-## LangGraph Workflow
+## 4. 보고서 구성 (자동 생성)
+1. **EXECUTIVE SUMMARY**: 사용자 질문 요약, 핵심 발견, 주요 수치, 결론
+2. **MARKET OVERVIEW**: 글로벌/국가별 시장 규모, 성장률, 원자재 가격 및 거시 지표, EV 판매량·원자재 가격 차트
+3. **POLICY/REGULATION**: 국가별 정책·보조금 비교, 규제 타임라인
+4. **OEM ANALYSIS**: 주요 완성차 전략, 생산 계획, 점유율, 파트너십/M&A
+5. **SUPPLY CHAIN ANALYSIS**: 배터리 공급망 구조, 기술 트렌드, 리스크, 밸류체인 다이어그램
+6. **FINANCIAL OUTLOOK**: EV 관련 주가 및 밸류에이션, 감성 분석, 섹터별 수익률 비교
+7. **CROSS-LAYER INSIGHTS**: 정책·원자재·OEM·금융 간 상호 영향 사례 및 인사이트
+8. **REFERENCES**: 뉴스, 정부 자료, 기업 IR, 리서치 리포트, 금융 데이터 출처
 
-```
-          ┌─────────────┐
-          │  Supervisor │
-          └──────┬──────┘
-                 │
-       ┌─────────▼─────────┐
-       │ Analysis Fan-out  │
-       └─────────┬─────────┘
-         market  policy  oem
-           │       │      │
-         supply_chain   finance
-                 │
-          ┌──────▼──────┐
-          │ Aggregation │   (shared state updates)
-          └──────┬──────┘
-                 │
-       ┌─────────▼─────────┐
-       │ Validation Chain  │
-       └─────────┬─────────┘
-      cross_layer_validation
-             │
-      report_quality_check
-             │
-      hallucination_check
-             │
-          ┌──▼──┐
-          │Exit │
-          └─────┘
-```
+각 섹션은 분석 에이전트의 결과와 검증 피드백을 바탕으로 자동 작성됩니다.
 
-- The supervisor schedules five analysis agents in parallel; their notes feed back into shared state.
-- Validation agents run sequentially, each able to request retries or add warnings before finalizing `final_report`.
-- `main.py` captures the final report, asks the LLM for cover/summary/chart plans, renders plots, and ships everything to the PDF service.
+---
 
-## 프로젝트 개요 (sk090-한정석-AI서비스-MINI-DAY-1)
+## 5. 최근 변경 사항 (본 구조에서의 개선점)
+- **LLM 메타데이터 생성**: 제목, 부제, 요약, 작성자/수신자 정보, 로고 URL, 차트 설계안을 LLM이 자동 산출
+- **차트 자동 렌더링**: LLM이 제안한 시계열/막대형 데이터를 Matplotlib로 시각화하여 PDF에 삽입 (최대 4개)
+- **Mobility 스타일 PDF**: 커버 페이지, 메타데이터 배너, 차트 갤러리, 안정적인 페이지 브레이크를 지원하는 HTML/CSS 템플릿
+- **FastAPI PDF 서비스 고도화**: `POST /pdf`가 Base64 차트와 요약을 받아 WeasyPrint로 즉시 PDF 변환
+- **의존성 추가**: `matplotlib`, `numpy`를 포함해 시각화 파이프라인을 구축
 
-- **주제**: 전기차 시장 트렌드 분석 Agent 개발
-- **내용**: 사용자가 EV 시장을 질의하면 다중 레이어 데이터(시장, 정책, OEM, 공급망, 금융)를 수집·교차 분석해 PDF 보고서로 제공
-- **주제 선정 이유**
-  1. EV 산업은 정책·제조사·공급망·금융이 긴밀하게 얽혀 있어 통합 분석이 필수
-  2. LangGraph 멀티 에이전트 구조가 레이어별 분석 및 상호 검증에 최적
-  3. 실제 투자자·애널리스트가 활용 가능한 리서치 자동화 흐름 제공
-- **핵심 기능**
-  1. 5개 레이어 병렬 데이터 수집 (시장, 정책, 완성차, 공급망, 금융)
-  2. Cross-layer 상관관계 분석 (예: 원자재 가격 → OEM 마진/주가 영향)
-  3. 다단계 검증으로 보고서 신뢰도 보강
-  4. 유사 쿼리 캐싱으로 반복 질문 응답 속도 향상
-- **보고서 목차**: Executive Summary, Market Overview, Policy/Regulation, OEM Analysis, Supply Chain Analysis, Financial Outlook, Cross-layer Insights, References (자동 생성 PDF에 동일하게 반영)
+---
 
-## Recent Enhancements
-
-- LLM이 제목·부제·요약·수신자·작성자를 자동 생성하고, 최대 4개의 차트 설계안을 만들어 Matplotlib로 시각화합니다.
-- 새 템플릿은 Mobility briefing 스타일의 커버 페이지, 섹션별 여백 제어, 차트 갤러리를 포함합니다.
-- FastAPI PDF 서비스가 표지 로고, 차트, 하이라이트 요약을 받아 WeasyPrint로 안정적인 페이지 브레이크를 유지합니다.
-- `requirements.txt`에 Matplotlib/Numpy를 추가하여 차트 랜더링을 지원합니다.
-
-## Getting Started
-
-Install dependencies:
-
+## 6. 실행 방법
+### 6.1 환경 구성
 ```bash
-pip install -e .
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Two supervisor entry points are available:
+### 6.2 LangGraph 워크플로 실행 및 PDF 출력
+1. FastAPI PDF 서버 기동
+   ```bash
+   uvicorn print.main:app --host 0.0.0.0 --port 8080
+   ```
+2. Supervisor 실행 (LLM 메타데이터 및 차트 자동 생성)
+   ```bash
+   python main.py "2025년 일본 전기차 시장 전망 보고서를 작성해줘" \
+     --pdf-output Mobility_New_Years_Briefing_2025.pdf
+   ```
+   - `--print-server-url`로 PDF 서버 주소를 변경할 수 있습니다.
+   - 실행 후 `Mobility_New_Years_Briefing_2025.pdf`가 생성되며, 커버/차트가 자동 포함됩니다.
 
-| Workflow | Module | Description |
-| --- | --- | --- |
-| Deterministic pipeline | `main.py` | Runs agents sequentially without LangGraph feedback loops. |
-| Minimal LangGraph demo | `python -m supervisor_langgraph.main` | Direct implementation of the official `create_supervisor` example (flight/hotel assistants). |
+---
 
-Choose the entry point that best fits your experimentation needs, provide the OPENAI credentials in your environment, and run one of the commands above with the desired task prompt.
-### PDF Rendering Service
-
-The `print` package exposes a FastAPI application that converts supervisor reports into styled HTML or PDF documents.
-
-- Start the service: `uvicorn print.main:app --host 0.0.0.0 --port 8080`
-- `POST /render` returns the rendered HTML for quick previews.
-- `POST /pdf` streams a downloadable PDF; the payload mirrors the JSON schema used by `/render`.
-- Sample payload:
-
+## 7. PDF 렌더링 API 요약
+- **엔드포인트**
+  - `POST /render`: HTML 미리보기 반환
+  - `POST /pdf`: PDF 스트림 응답 (다운로드 가능)
+- **요청 본문 (예시)**
   ```json
   {
-    "title": "2025 Japan EV Market Outlook",
-    "subtitle": "Supervisor Consolidated Findings",
-    "prepared_for": "Executive Team",
+    "title": "Mobility New Year's Briefing 2025",
+    "subtitle": "EV Transformation Outlook for Japan",
+    "prepared_for": "Mobility Strategy Team",
     "prepared_by": "EV Market Supervisor",
-    "logo_url": "https://example.com/brandmark.svg",
-    "summary": "Short executive overview highlighted on the first content page.",
+    "summary": "시장 성장은 정책 지원과 충전 인프라 확장에 힘입어 가속화되고 있습니다.",
+    "logo_url": "https://example.com/logo.svg",
     "charts": [
       {
         "title": "EV Sales Mix",
-        "caption": "Source: Company filings, 2024.",
+        "caption": "Source: METI, JADA",
         "media_type": "image/png",
-        "image_base64": "<base64 string>"
+        "image_base64": "<base64 데이터>"
       }
     ],
-    "report": "=== Final Report ===\n\n1. EXECUTIVE SUMMARY..."
+    "report": "=== Final Report ===\n\n1. EXECUTIVE SUMMARY ..."
   }
   ```
+- Supervisor CLI는 위 스키마를 LLM과 Matplotlib로 자동 채웁니다.
 
-When running `main.py`, supply `--pdf-output report.pdf` (and optionally `--print-server-url`) and the workflow will ask the LLM to craft the title, summary, recipients, and chart blueprints automatically before calling the PDF service.
+---
 
-# ai-agent-ev
+## 8. 참고 사항
+- OPENAI API 키 등 LLM 자격 증명이 환경 변수로 설정되어 있어야 LangGraph가 정상 동작합니다.
+- 로컬에서 PDF 생성 시 WeasyPrint가 요구하는 시스템 패키지(cairo, pango 등)가 필요할 수 있습니다.
+- 캐싱 전략과 외부 데이터 연동 부분은 도메인 요구에 맞춰 확장 가능합니다.
+
+---
+
+문의 사항이나 기능 확장을 원하시면 이슈를 등록하거나 직접 PR을 생성해 주세요.
