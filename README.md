@@ -56,11 +56,6 @@ LangGraph는 다음과 같은 순서로 동작합니다.
                                        └────────────┘
 
 ```
-
-- Supervisor는 사용자 지시를 바탕으로 다섯 개 분석 에이전트를 호출하고, 결과를 공유 상태(SupervisorState)에 통합합니다.
-- 검증 에이전트들은 순차적으로 실행되며 필요 시 재시도를 요청하거나 경고를 추가합니다.
-- 최종 보고서는 `main.py`에서 수집한 후 LLM 메타데이터 생성 → 차트 렌더링 → FastAPI PDF 서비스 호출 순으로 처리됩니다.
-
 ---
 
 ## 3. 저장소 구조
@@ -141,10 +136,9 @@ pip install -r requirements.txt
 2. Supervisor 실행 (LLM 메타데이터 및 차트 자동 생성)
    ```bash
    python main.py "2025년 일본 전기차 시장 전망 보고서를 작성해줘" \
-     --pdf-output Mobility_New_Years_Briefing_2025.pdf
+     --pdf-output {name}.pdf
    ```
-   - `--print-server-url`로 PDF 서버 주소를 변경할 수 있습니다.
-   - 실행 후 `Mobility_New_Years_Briefing_2025.pdf`가 생성되며, 커버/차트가 자동 포함됩니다.
+   - 실행 후 `{name}.pdf`가 생성되며, 커버/차트가 자동 포함됩니다.
 
 ---
 
