@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1in;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #1f2933;
+            background-color: #f4f6fb;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        .page {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+            padding: 48px 60px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            font-size: 22px;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        h3 {
+            font-size: 16px;
+            color: #1f2933;
+            margin-bottom: 6px;
+        }
+
+        p {
+            margin: 0 0 12px 0;
+        }
+
+        .subtitle {
+            color: #4b5563;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .meta-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .meta-grid div span {
+            display: block;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: #ffffff;
+            border-radius: 14px;
+            padding: 24px;
+            margin: 32px 0 40px 0;
+            box-shadow: 0 20px 35px rgba(37, 99, 235, 0.25);
+        }
+
+        .summary-card h2 {
+            color: #ffffff;
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+
+        .summary-card p {
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 15px;
+        }
+
+        .report-section {
+            margin-bottom: 48px;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .section-index {
+            background: #0f172a;
+            color: #ffffff;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+        }
+
+        .section-body {
+            padding-left: 8px;
+            border-left: 3px solid #e2e8f0;
+        }
+
+        .paragraph {
+            font-size: 14px;
+            color: #1f2a37;
+            margin-bottom: 14px;
+        }
+
+        .paragraph strong {
+            color: #0f172a;
+        }
+
+        .bullet-list {
+            margin: 0 0 16px 0;
+            padding-left: 20px;
+            font-size: 14px;
+            color: #1f2a37;
+        }
+
+        .bullet-list li {
+            margin-bottom: 8px;
+        }
+
+        .external-link {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+
+        .external-link:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <h1>{{ title }}</h1>
+            {% if subtitle %}
+                <div class="subtitle">{{ subtitle }}</div>
+            {% endif %}
+            <div class="meta-grid">
+                <div>
+                    <span>Prepared For</span>
+                    {{ prepared_for or "—" }}
+                </div>
+                <div>
+                    <span>Prepared By</span>
+                    {{ prepared_by or "EV Market Supervisor" }}
+                </div>
+                <div>
+                    <span>Generated</span>
+                    {{ generated_at }}
+                </div>
+            </div>
+        </header>
+
+        {% if summary %}
+            <section class="summary-card">
+                <h2>Executive Overview</h2>
+                <p>{{ summary }}</p>
+            </section>
+        {% endif %}
+
+        {% for section in sections %}
+            <section class="report-section">
+                <div class="section-header">
+                    <span class="section-index">{{ section.index }}</span>
+                    <h2>{{ section.title }}</h2>
+                </div>
+                <div class="section-body">
+                    {% for block in section.blocks %}
+                        {% if block.type == 'paragraph' %}
+                            <p class="paragraph">{{ block.html | safe }}</p>
+                        {% elif block.type == 'list' %}
+                            <ul class="bullet-list">
+                                {% for item in block.items %}
+                                    <li>{{ item | safe }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+
+        <footer>
+            Generated by the EV Market Supervisor analysis system.
+        </footer>
+    </div>
+</body>
+</html>
