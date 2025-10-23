@@ -1,3 +1,4 @@
 langgraph>=0.0.62
 langchain>=0.1
 langchain-core>=0.1
+requests>=2.31

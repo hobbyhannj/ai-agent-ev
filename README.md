@@ -4,7 +4,7 @@ This repository contains a skeleton implementation of a Supervisor-based LangGra
 
 ## Architecture Overview
 
-- **Supervisor-first orchestration** using `create_supervisor` to coordinate analysis and validation agents.
+- **Deterministic supervisor orchestration** coordinating analysis and validation agents in a fixed sequence.
 - **Five analysis agents** (Market, Policy, OEM, Supply Chain, Finance) built with ReAct-style prompts.
 - **Three validation agents** (Cross-layer Validation, Report Quality Check, Hallucination Check) reviewing outputs before publication.
 - **Shared state** tracks task inputs, intermediate notes, decisions, and retry counts to prevent infinite loops.

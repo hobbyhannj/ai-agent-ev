@@ -1,25 +1,44 @@
-"""Public exports for tool helpers used throughout the project."""
+"""Unified tool registry for EV Market Intelligence system."""
 
-from .tools import (
-    audit_log,
-    compile_report,
-    fetch_policy_updates,
-    finance_dashboard,
-    get_analysis_tools,
-    get_oem_insights,
-    get_validation_tools,
-    query_market_data,
-    supply_chain_heatmap,
-)
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from .loader import auto_load_tools
 
 __all__ = [
-    "query_market_data",
-    "fetch_policy_updates",
-    "get_oem_insights",
-    "supply_chain_heatmap",
-    "finance_dashboard",
-    "compile_report",
-    "audit_log",
     "get_analysis_tools",
     "get_validation_tools",
 ]
+
+
+def _load_env_file() -> None:
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"\'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_env_file()
+
+
+def get_analysis_tools():
+    """Dynamically load all analysis tool modules."""
+    return auto_load_tools(category="analysis")
+
+
+def get_validation_tools():
+    """Dynamically load all validation tool modules."""
+    return auto_load_tools(category="validation")

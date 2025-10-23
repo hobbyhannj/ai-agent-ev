@@ -1,5 +1,5 @@
 """State objects used by the EV Market Supervisor graph."""
 
-from .state import GraphState, SupervisorState
+from .state import SupervisorState
 
-__all__ = ["GraphState", "SupervisorState"]
+__all__ = ["SupervisorState"]

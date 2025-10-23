@@ -1,6 +1,6 @@
 """Prompt template for the EV Market Intelligence Supervisor agent."""
 
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 SUPERVISOR_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
@@ -9,5 +9,5 @@ SUPERVISOR_PROMPT = ChatPromptTemplate.from_messages([
      "and three validation agents (cross_layer_validation, report_quality_check, hallucination_check). "
      "Your goal is to determine which agent to call next, decide when the report is ready, "
      "and ensure no redundant retries or infinite loops."),
-    ("human", "{input}")
+    MessagesPlaceholder(variable_name="messages"),
 ])
