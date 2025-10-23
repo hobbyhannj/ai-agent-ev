@@ -102,19 +102,19 @@ Supervisor는 전체 워크플로우의 stage를 제어하면서,
 
 ## 요약
 
-Old Branch (old)
+Before (Branch : Old)
 
-완전 Supervisor 중심 자동화 구조
+- 완전 Supervisor 중심 자동화 구조
 
-툴 사용 비보장 / 프롬프트 기반 통제 불안정
+- 툴 사용 비보장 / 프롬프트 기반 통제 불안정
 
-Main Branch (main)
+Current (Branch : Main)
 
-Supervisor는 orchestration 중심
+- Supervisor는 orchestration 중심
 
-에이전트는 명시적 툴 기반 실행
+- 에이전트는 명시적 툴 기반 실행
 
-데이터 신뢰성, 분석 일관성 강화
+- 데이터 신뢰성, 분석 일관성 강화
 
 # EV Market Analysis by Multi-Agent with Supervisor
 
