@@ -65,18 +65,16 @@ SupervisorState에 실데이터가 축적되지 않은 상태에서 LLM이 리�
 
 즉, Supervisor의 자율 판단이 오히려 데이터 기반 분석 파이프라인의 신뢰성을 저하시켰습니다.
 
-## 4. 현재 구조(main): Deterministic Supervisor Hybrid
+## 4. 변경 사항 정리
 
-현재(main 브랜치) 설계에서는
-Supervisor가 “조정자(Orchestrator)”로만 동작하며,
-Agent 실행 순서와 툴 호출은 결정론적(deterministic) 으로 고정되었습니다.
+| 항목                | `old` (Supervisor 중심 구조)  | `main` (Deterministic Hybrid 구조)                  |
+| ----------------- | ------------------------- | ------------------------------------------------- |
+| **Agent 실행 순서**   | Supervisor가 자율적으로 결정      | 고정된 순서 (market → policy → OEM → supply → finance) |
+| **Tool 호출 제어**    | Supervisor 판단에 의존         | 각 Agent 내부에서 필수 툴을 직접 호출                          |
+| **Supervisor 역할** | 에이전트 분기 및 보고서 직접 생성       | 단계 간 전환 및 상태 관리 (Stage management)                |
+| **종료 조건**         | LLM 판단에 따라 report 생성으로 종료 | 명시적 `final_report=True` 조건으로 종료                   |
+| **보고서 품질**        | 일관성 낮음 (요약 중심, 툴 미사용 가능)  | 실데이터 기반 + LLM 요약 결합 방식                            |
 
-항목	old (Supervisor 중심)	main (Deterministic Hybrid)
-Agent 실행 순서	Supervisor가 자율 결정	고정 순서 (market → policy → OEM → supply → finance)
-Tool 호출 제어	Supervisor 판단에 의존	Agent 내부에서 강제 호출
-Supervisor 역할	에이전트 분기 및 보고서 생성	단계 간 전환·상태 제어 (Stage management)
-종료 조건	LLM 판단 (report generation)	명시적 final_report=True 조건
-보고서 품질	일관성 낮음 (임의 요약)	툴 기반 실데이터 + LLM 요약 조합
 ## 5. Supervisor 중심의 현재 LangGraph 구조
 
                 ┌───────────────────────────┐
