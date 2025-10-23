@@ -282,6 +282,4 @@ pip install -r requirements.txt
     "report": "=== Final Report ===\n\n1. EXECUTIVE SUMMARY ..."
   }
   ```
-- Supervisor CLI는 위 스키마를 LLM과 Matplotlib로 자동 채웁니다.
-
 ---
