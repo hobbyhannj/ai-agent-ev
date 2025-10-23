@@ -1,6 +1,6 @@
-# EV Market Supervisor (전기차 시장 인텔리전스 에이전트)
+# EV Market Analysis by Multi-Agent with Supervisor
 
-이 저장소는 **sk090-한정석-AI서비스-MINI-DAY-1** 과제로 진행한 "전기차 시장 트렌드 분석 Agent" 프로젝트의 코드와 문서를 포함합니다. LangGraph 기반 멀티 에이전트 구조를 활용해 EV 시장과 관련된 다층 데이터를 수집·교차 분석하고, 최종 결과를 PDF 보고서로 출력합니다.
+LangGraph 기반 멀티 에이전트 구조를 활용해 EV 시장과 관련된 다층 데이터를 수집·교차 분석하고, 최종 결과를 PDF 보고서로 출력합니다.
 
 ---
 
@@ -18,7 +18,7 @@
 1. **5개 레이어 병렬 데이터 수집**: 시장(Market), 정책(Policy), 완성차(OEM), 공급망(Supply Chain), 금융(Finance)
 2. **Cross-layer 상관관계 분석**: 예) 리튬 가격 상승 → 배터리 기업 수익성 및 주가 영향
 3. **다단계 검증 체계**: Cross-Layer Validation → Report Quality Check → Hallucination Check 순으로 신뢰도 확보
-4. **쿼리 캐싱**: 유사 질문(유사도 > threshold)에 대해 응답 속도 향상
+~~4. 쿼리 캐싱: 유사 질문(유사도 > threshold)에 대해 응답 속도 향상~~
 5. **자동 PDF 패키징**: LLM이 메타데이터·차트를 설계하고 FastAPI 서비스를 통해 WeasyPrint PDF 생성
 
 ---
@@ -27,33 +27,34 @@
 LangGraph는 다음과 같은 순서로 동작합니다.
 
 ```
-          ┌─────────────┐
-          │  Supervisor │  (최상위 조정자)
-          └──────┬──────┘
-                 │
-       ┌─────────▼─────────┐
-       │  Analysis Fan-out │  (병렬 분석 레이어)
-       └─────────┬─────────┘
-         market  policy  oem
-           │       │      │
-        supply_chain   finance
-                 │
-          ┌──────▼──────┐
-          │ Aggregation │  (공유 상태 취합)
-          └──────┬──────┘
-                 │
-       ┌─────────▼─────────┐
-       │ Validation Chain  │  (순차 검증 레이어)
-       └─────────┬─────────┘
-  cross_layer_validation
-             │
-  report_quality_check
-             │
-  hallucination_check
-             │
-          ┌──▼──┐
-          │ Exit│
-          └─────┘
+                   ┌───────────────────────────────┐
+                   │           Supervisor           │
+                   │  (모든 단계의 진입·종료를 담당)  │
+                   └──────────────┬────────────────┘
+                                  │
+         ┌──────────────┬─────────┼──────────┬──────────────┐
+         ▼              ▼         ▼          ▼              ▼
+     market_agent   policy_agent  oem_agent  supply_agent   finance_agent
+         │              │         │          │              │
+         └──────┬───────┴─────────┴──────────┴──────┬───────┘
+                │                                   │
+                ▼                                   ▼
+        ┌───────────────┐                 ┌─────────────────┐
+        │ Aggregation    │                 │  Validation Seq  │
+        │ (cross-layer)  │                 │ (검증 체인 시작) │
+        └──────┬─────────┘                 └────────┬────────┘
+               │                                    │
+               ▼                                    ▼
+     ┌────────────────────┐          ┌────────────────────────┐
+     │ cross_layer_validation │ → │ report_quality_check │ → │ hallucination_check │
+     └────────────────────┘          └────────────────────────┘
+                                               │
+                                               ▼
+                                       ┌────────────┐
+                                       │ Supervisor │  ← 종료 및 Report finalize
+                                       │ (exit loop)│
+                                       └────────────┘
+
 ```
 
 - Supervisor는 사용자 지시를 바탕으로 다섯 개 분석 에이전트를 호출하고, 결과를 공유 상태(SupervisorState)에 통합합니다.
@@ -65,24 +66,24 @@ LangGraph는 다음과 같은 순서로 동작합니다.
 ## 3. 저장소 구조
 ```
 .
-├── agents/
+├── agents/                     # 에이전트
 │   ├── __init__.py
 │   ├── analysis.py             # 5개 분석 에이전트 정의
 │   └── validation.py           # 3개 검증 에이전트 정의
-├── main.py                     # LangGraph 실행 및 PDF 패키징 엔트리포인트
-├── print/
+├── main.py                     # LangGraph 실행
+├── print/                      # FastAPI 기반 프린트 서버
 │   ├── __init__.py
-│   ├── app.py                 # FastAPI + WeasyPrint PDF 서비스
-│   ├── main.py                # uvicorn 실행 스크립트
+│   ├── app.py                 
+│   ├── main.py                
 │   └── templates/
-│       └── report.html        # Mobility Briefing 스타일 HTML 템플릿
+│       └── report.html         # HTML 템플릿
 ├── states/
 │   ├── __init__.py
-│   └── state.py               # SupervisorState 및 공유 상태 로직
+│   └── state.py                
 ├── supervisor/
 │   ├── __init__.py
-│   └── builder.py             # 워크플로 구축 헬퍼
-├── templates/
+│   └── builder.py             
+├── templates/                  # 프롬프트
 │   ├── __init__.py
 │   ├── market.py
 │   ├── policy.py
@@ -92,16 +93,16 @@ LangGraph는 다음과 같은 순서로 동작합니다.
 │   ├── cross_layer_validation.py
 │   ├── report_quality_check.py
 │   └── hallucination_check.py
-├── tools/
+├── tools/                      # 툴
 │   ├── __init__.py
-│   └── tools.py               # 에이전트 보조 도구 스켈레톤
+│   └── tools.py               
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## 4. 보고서 구성 (자동 생성)
+## 4. 보고서 목차
 1. **EXECUTIVE SUMMARY**: 사용자 질문 요약, 핵심 발견, 주요 수치, 결론
 2. **MARKET OVERVIEW**: 글로벌/국가별 시장 규모, 성장률, 원자재 가격 및 거시 지표, EV 판매량·원자재 가격 차트
 3. **POLICY/REGULATION**: 국가별 정책·보조금 비교, 규제 타임라인
@@ -115,7 +116,7 @@ LangGraph는 다음과 같은 순서로 동작합니다.
 
 ---
 
-## 5. 최근 변경 사항 (본 구조에서의 개선점)
+## 5. 변경 사항
 - **LLM 메타데이터 생성**: 제목, 부제, 요약, 작성자/수신자 정보, 로고 URL, 차트 설계안을 LLM이 자동 산출
 - **차트 자동 렌더링**: LLM이 제안한 시계열/막대형 데이터를 Matplotlib로 시각화하여 PDF에 삽입 (최대 4개)
 - **Mobility 스타일 PDF**: 커버 페이지, 메타데이터 배너, 차트 갤러리, 안정적인 페이지 브레이크를 지원하는 HTML/CSS 템플릿
@@ -174,12 +175,3 @@ pip install -r requirements.txt
 - Supervisor CLI는 위 스키마를 LLM과 Matplotlib로 자동 채웁니다.
 
 ---
-
-## 8. 참고 사항
-- OPENAI API 키 등 LLM 자격 증명이 환경 변수로 설정되어 있어야 LangGraph가 정상 동작합니다.
-- 로컬에서 PDF 생성 시 WeasyPrint가 요구하는 시스템 패키지(cairo, pango 등)가 필요할 수 있습니다.
-- 캐싱 전략과 외부 데이터 연동 부분은 도메인 요구에 맞춰 확장 가능합니다.
-
----
-
-문의 사항이나 기능 확장을 원하시면 이슈를 등록하거나 직접 PR을 생성해 주세요.
