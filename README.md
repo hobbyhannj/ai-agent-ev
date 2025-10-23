@@ -1,3 +1,121 @@
+# 설계 변경 사항
+1. 초기 설계: 수동 순차 제어 방식
+
+초기 버전(old 브랜치)은 LangGraph의 create_supervisor를 사용하지 않고,
+직접 정의한 분석 에이전트들을 순차적으로 실행하는 수동 orchestration 구조였습니다.
+
+이 구조는 에이전트별 툴 제어가 명확했지만,
+그래프 레벨에서 상태 관리(State Transition)가 자동화되지 않아 유지보수가 어려웠습니다.
+
+2. Supervisor 도입: LangGraph Multi-Agent Supervisor 공식 구조 적용 - https://langchain-ai.github.io/langgraph/agents/multi-agent/#supervisor
+
+아래는 LangGraph 공식 문서의 Supervisor 예시입니다.
+create_supervisor가 여러 ReAct Agent를 관리하고 자동으로 분기·호출을 수행합니다.
+```python
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langgraph_supervisor import create_supervisor
+
+def book_hotel(hotel_name: str):
+    return f"Successfully booked a stay at {hotel_name}."
+
+def book_flight(from_airport: str, to_airport: str):
+    return f"Successfully booked a flight from {from_airport} to {to_airport}."
+
+flight_assistant = create_react_agent(
+    model="openai:gpt-4o",
+    tools=[book_flight],
+    prompt="You are a flight booking assistant",
+    name="flight_assistant",
+)
+
+hotel_assistant = create_react_agent(
+    model="openai:gpt-4o",
+    tools=[book_hotel],
+    prompt="You are a hotel booking assistant",
+    name="hotel_assistant",
+)
+
+supervisor = create_supervisor(
+    agents=[flight_assistant, hotel_assistant],
+    model=ChatOpenAI(model="gpt-4o"),
+    prompt=(
+        "You manage a hotel booking assistant and a flight booking assistant. "
+        "Assign work to them."
+    ),
+).compile()
+
+for chunk in supervisor.stream({
+    "messages": [{"role": "user", "content": "book a flight from BOS to JFK and a stay at McKittrick Hotel"}]
+}):
+    print(chunk)
+```
+3. 문제점: 과도한 자율성과 툴 미사용 이슈
+
+Supervisor 기반 구조를 적용하자,
+Supervisor가 필수 툴을 건너뛰고 바로 보고서를 생성하는 문제가 발생했습니다.
+
+분석 Agent가 보유한 핵심 함수(fetch_market_data, fetch_financial_overview, 등)를 사용하지 않음
+
+SupervisorState에 실데이터가 축적되지 않은 상태에서 LLM이 리포트를 완성함
+
+프롬프트를 강화해도 Supervisor가 "바로 요약 텍스트"로 탈주
+
+결과적으로 “툴 사용이 보장되지 않는” 워크플로우로 변질됨
+
+즉, Supervisor의 자율 판단이 오히려 데이터 기반 분석 파이프라인의 신뢰성을 저하시켰습니다.
+
+4. 현재 구조(main): Deterministic Supervisor Hybrid
+
+현재(main 브랜치) 설계에서는
+Supervisor가 “조정자(Orchestrator)”로만 동작하며,
+Agent 실행 순서와 툴 호출은 결정론적(deterministic) 으로 고정되었습니다.
+
+항목	old (Supervisor 중심)	main (Deterministic Hybrid)
+Agent 실행 순서	Supervisor가 자율 결정	고정 순서 (market → policy → OEM → supply → finance)
+Tool 호출 제어	Supervisor 판단에 의존	Agent 내부에서 강제 호출
+Supervisor 역할	에이전트 분기 및 보고서 생성	단계 간 전환·상태 제어 (Stage management)
+종료 조건	LLM 판단 (report generation)	명시적 final_report=True 조건
+보고서 품질	일관성 낮음 (임의 요약)	툴 기반 실데이터 + LLM 요약 조합
+5. Supervisor 중심의 현재 LangGraph 구조
+┌───────────────────────────┐
+│        Supervisor         │
+│  (전체 파이프라인 제어)   │
+└─────────────┬─────────────┘
+              │
+ ┌────────────┴───────────────────────────────┐
+ │                                            │
+ ▼                                            ▼
+market_agent → policy_agent → oem_agent → supply_agent → finance_agent
+ │                                            │
+ └──────────────────────────────┬─────────────┘
+                                ▼
+                        Aggregation (상태 통합)
+                                ▼
+                 cross_layer_validation → report_quality_check → hallucination_check
+                                ▼
+                        Supervisor (Finalization)
+
+
+Supervisor는 전체 워크플로우의 stage를 제어하면서,
+각 단계 완료 시 state.next_stage()로 전환하여 자동 종료를 유도합니다.
+
+## 요약
+
+Old Branch (old)
+
+완전 Supervisor 중심 자동화 구조
+
+툴 사용 비보장 / 프롬프트 기반 통제 불안정
+
+Main Branch (main)
+
+Supervisor는 orchestration 중심
+
+에이전트는 명시적 툴 기반 실행
+
+데이터 신뢰성, 분석 일관성 강화
+
 # EV Market Analysis by Multi-Agent with Supervisor
 
 LangGraph 기반 멀티 에이전트 구조를 활용해 EV 시장과 관련된 다층 데이터를 수집·교차 분석하고, 최종 결과를 PDF 보고서로 출력합니다.
