@@ -1,4 +1,77 @@
-__pycache__
-.venv
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+.ipynb_checkpoints/
+
+# --- Environment Variables ---
 .env
+.env.*
+*.env
+secrets.json
+config.yaml
+
+# --- Logs & Outputs ---
+*.log
+*.out
+*.err
+logs/
+reports/
+outputs/
+*.csv
+*.tsv
+*.xlsx
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS / Misc ---
+.DS_Store
+Thumbs.db
+.cache/
+__pypackages__/
+node_modules/
+
+# --- ML & LangGraph Cache ---
+.openai/
+.cache/
+.wandb/
+mlruns/
+artifacts/
+data_cache/
+chromadb/
+langgraph_checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# --- Jupyter / Colab ---
+.ipynb_checkpoints/
+*.ipynb_convert/
+*.nbconvert.ipynb
+
+# --- Reports / PDFs ---
 *.pdf
+*.docx
+*.pptx
+
+# --- Temporary ---
+temp/
+tmp/
+__trash__/
