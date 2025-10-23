@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+            background: #ecf1f7;
+        }
+
+        @page cover {
+            margin: 0;
+        }
+
+        @page content {
+            margin: 0.9in 1in 1in 1in;
+            @bottom-center {
+                content: element(page-footer);
+                font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+                font-size: 11px;
+                color: #9aa4b2;
+            }
+        }
+
+        body {
+            margin: 0;
+            font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+            color: #1f2933;
+            background: #ecf1f7;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 0 0 12px 0;
+        }
+
+        .cover-page {
+            page: cover;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 72px 80px;
+            background: linear-gradient(135deg, #111827 0%, #1f2937 55%, #2563eb 100%);
+            color: #f8fafc;
+        }
+
+        .cover-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .cover-logo {
+            max-height: 60px;
+            max-width: 180px;
+        }
+
+        .cover-title {
+            max-width: 480px;
+        }
+
+        .cover-title h1 {
+            font-size: 40px;
+            line-height: 1.15;
+            margin-bottom: 12px;
+        }
+
+        .cover-title .cover-subtitle {
+            font-size: 18px;
+            color: rgba(248, 250, 252, 0.82);
+        }
+
+        .cover-meta {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 24px;
+        }
+
+        .cover-meta div span {
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 11px;
+            color: rgba(226, 232, 240, 0.72);
+            margin-bottom: 6px;
+        }
+
+        .cover-meta div strong {
+            font-size: 16px;
+            color: #f8fafc;
+        }
+
+        .cover-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: rgba(226, 232, 240, 0.65);
+        }
+
+        .content-page {
+            page: content;
+            background: #ffffff;
+        }
+
+        .content-inner {
+            padding: 12px 0;
+        }
+
+        .content-container {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 36px 42px 48px 42px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        .summary-section {
+            background: linear-gradient(120deg, #2563eb 0%, #1d4ed8 100%);
+            border-radius: 14px;
+            padding: 28px 32px;
+            color: #f1f5f9;
+            margin-bottom: 36px;
+            box-shadow: 0 18px 36px rgba(29, 78, 216, 0.25);
+            page-break-inside: avoid;
+        }
+
+        .summary-section h2 {
+            color: #f8fafc;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .summary-section p {
+            color: rgba(241, 245, 249, 0.92);
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        .report-section {
+            margin-bottom: 42px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .section-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #111827;
+            color: #f8fafc;
+            font-weight: 600;
+            box-shadow: 0 12px 24px rgba(17, 24, 39, 0.22);
+        }
+
+        .section-heading h2 {
+            font-size: 22px;
+            letter-spacing: 0.01em;
+            color: #111827;
+        }
+
+        .section-body {
+            padding-left: 12px;
+            border-left: 3px solid #e2e8f0;
+        }
+
+        .paragraph {
+            font-size: 14px;
+            color: #1f2a37;
+            line-height: 1.7;
+            margin-bottom: 14px;
+        }
+
+        .paragraph strong {
+            color: #0f172a;
+        }
+
+        .bullet-list {
+            list-style: disc outside;
+            margin: 0 0 16px 16px;
+            padding: 0;
+            color: #1f2a37;
+        }
+
+        .bullet-list li {
+            font-size: 14px;
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .chart-section .section-index {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+        }
+
+        .chart-card {
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 18px 18px 22px 18px;
+            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .chart-image {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .chart-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .chart-card figcaption {
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .chart-card figcaption strong {
+            display: block;
+            font-size: 14px;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .page-footer {
+            position: running(page-footer);
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            color: #9aa4b2;
+            border-top: 1px solid #d1d9e6;
+        }
+
+        .page-footer span:last-child {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .external-link {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+
+        .external-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <section class="cover-page">
+        <div class="cover-top">
+            {% if logo_url %}
+                <img src="{{ logo_url }}" alt="Organization logo" class="cover-logo" />
+            {% endif %}
+            <div class="cover-title">
+                <h1>{{ title }}</h1>
+                {% if subtitle %}
+                    <p class="cover-subtitle">{{ subtitle }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="cover-meta">
+            <div>
+                <span>Prepared For</span>
+                <strong>{{ prepared_for or "—" }}</strong>
+            </div>
+            <div>
+                <span>Prepared By</span>
+                <strong>{{ prepared_by or "EV Market Supervisor" }}</strong>
+            </div>
+            <div>
+                <span>Generated</span>
+                <strong>{{ generated_at }}</strong>
+            </div>
+        </div>
+        <div class="cover-footer">
+            <span>{{ generated_at }}</span>
+            <span>EV Market Supervisor Intelligence Suite</span>
+        </div>
+    </section>
+
+    <main class="content-page">
+        <div class="content-inner">
+            <div class="content-container">
+                {% if summary %}
+                    <section class="summary-section">
+                        <h2>Executive Overview</h2>
+                        <p>{{ summary }}</p>
+                    </section>
+                {% endif %}
+
+                {% for section in sections %}
+                    <section class="report-section">
+                        <div class="section-heading">
+                            <span class="section-index">{{ section.index }}</span>
+                            <h2>{{ section.title }}</h2>
+                        </div>
+                        <div class="section-body">
+                            {% for block in section.blocks %}
+                                {% if block.type == 'paragraph' %}
+                                    <p class="paragraph">{{ block.html | safe }}</p>
+                                {% elif block.type == 'list' %}
+                                    <ul class="bullet-list">
+                                        {% for item in block.entries %}
+                                            <li>{{ item | safe }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endfor %}
+
+                {% if charts %}
+                    <section class="report-section chart-section">
+                        <div class="section-heading">
+                            <span class="section-index">C</span>
+                            <h2>Market Visuals</h2>
+                        </div>
+                        <div class="chart-grid">
+                            {% for chart in charts %}
+                                <figure class="chart-card" {% if chart.width %}style="max-width: {{ chart.width }}px;"{% endif %}>
+                                    <div class="chart-image">
+                                        <img src="{{ chart.data_url }}" alt="{{ chart.alt }}" {% if chart.height %}style="max-height: {{ chart.height }}px;"{% endif %} />
+                                    </div>
+                                    <figcaption>
+                                        <strong>{{ chart.title }}</strong>
+                                        {% if chart.caption %}
+                                            <p>{{ chart.caption }}</p>
+                                        {% endif %}
+                                    </figcaption>
+                                </figure>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <footer class="page-footer">
+        <span>{{ title }}</span>
+        <span>EV Market Supervisor</span>
+    </footer>
+</body>
+</html>

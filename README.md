@@ -45,5 +45,43 @@ Install dependencies:
 pip install -e .
 ```
 
-Then wire your preferred LLM client, implement the tool stubs, and call `build_workflow` from `ev_market_supervisor.main` to compile the graph.
+Two supervisor entry points are available:
+
+| Workflow | Module | Description |
+| --- | --- | --- |
+| Deterministic pipeline | `main.py` | Runs agents sequentially without LangGraph feedback loops. |
+| Minimal LangGraph demo | `python -m supervisor_langgraph.main` | Direct implementation of the official `create_supervisor` example (flight/hotel assistants). |
+
+Choose the entry point that best fits your experimentation needs, provide the OPENAI credentials in your environment, and run one of the commands above with the desired task prompt.
+### PDF Rendering Service
+
+The `print` package exposes a FastAPI application that converts supervisor reports into styled HTML or PDF documents.
+
+- Start the service: `uvicorn print.main:app --host 0.0.0.0 --port 8080`
+- `POST /render` returns the rendered HTML for quick previews.
+- `POST /pdf` streams a downloadable PDF; the payload mirrors the JSON schema used by `/render`.
+- Sample payload:
+
+  ```json
+  {
+    "title": "2025 Japan EV Market Outlook",
+    "subtitle": "Supervisor Consolidated Findings",
+    "prepared_for": "Executive Team",
+    "prepared_by": "EV Market Supervisor",
+    "logo_url": "https://example.com/brandmark.svg",
+    "summary": "Short executive overview highlighted on the first content page.",
+    "charts": [
+      {
+        "title": "EV Sales Mix",
+        "caption": "Source: Company filings, 2024.",
+        "media_type": "image/png",
+        "image_base64": "<base64 string>"
+      }
+    ],
+    "report": "=== Final Report ===\n\n1. EXECUTIVE SUMMARY..."
+  }
+  ```
+
+When running `main.py`, supply `--pdf-output report.pdf` (and optionally `--print-server-url`) and the workflow will ask the LLM to craft the title, summary, recipients, and chart blueprints automatically before calling the PDF service.
+
 # ai-agent-ev
