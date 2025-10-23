@@ -1,5 +1,5 @@
 # 설계 변경 사항
-1. 초기 설계: 수동 순차 제어 방식
+## 1. 초기 설계: 수동 순차 제어 방식
 
 초기 버전(old 브랜치)은 LangGraph의 create_supervisor를 사용하지 않고,
 직접 정의한 분석 에이전트들을 순차적으로 실행하는 수동 orchestration 구조였습니다.
@@ -7,7 +7,7 @@
 이 구조는 에이전트별 툴 제어가 명확했지만,
 그래프 레벨에서 상태 관리(State Transition)가 자동화되지 않아 유지보수가 어려웠습니다.
 
-2. Supervisor 도입: LangGraph Multi-Agent Supervisor 공식 구조 적용 - https://langchain-ai.github.io/langgraph/agents/multi-agent/#supervisor
+## 2. Supervisor 도입: LangGraph Multi-Agent Supervisor 공식 구조 적용 - https://langchain-ai.github.io/langgraph/agents/multi-agent/#supervisor
 
 아래는 LangGraph 공식 문서의 Supervisor 예시입니다.
 create_supervisor가 여러 ReAct Agent를 관리하고 자동으로 분기·호출을 수행합니다.
@@ -50,7 +50,7 @@ for chunk in supervisor.stream({
 }):
     print(chunk)
 ```
-3. 문제점: 과도한 자율성과 툴 미사용 이슈
+## 3. 문제점: 과도한 자율성과 툴 미사용 이슈
 
 Supervisor 기반 구조를 적용하자,
 Supervisor가 필수 툴을 건너뛰고 바로 보고서를 생성하는 문제가 발생했습니다.
@@ -65,7 +65,7 @@ SupervisorState에 실데이터가 축적되지 않은 상태에서 LLM이 리�
 
 즉, Supervisor의 자율 판단이 오히려 데이터 기반 분석 파이프라인의 신뢰성을 저하시켰습니다.
 
-4. 현재 구조(main): Deterministic Supervisor Hybrid
+## 4. 현재 구조(main): Deterministic Supervisor Hybrid
 
 현재(main 브랜치) 설계에서는
 Supervisor가 “조정자(Orchestrator)”로만 동작하며,
@@ -77,7 +77,7 @@ Tool 호출 제어	Supervisor 판단에 의존	Agent 내부에서 강제 호출
 Supervisor 역할	에이전트 분기 및 보고서 생성	단계 간 전환·상태 제어 (Stage management)
 종료 조건	LLM 판단 (report generation)	명시적 final_report=True 조건
 보고서 품질	일관성 낮음 (임의 요약)	툴 기반 실데이터 + LLM 요약 조합
-5. Supervisor 중심의 현재 LangGraph 구조
+## 5. Supervisor 중심의 현재 LangGraph 구조
 
                 ┌───────────────────────────┐
                 │        Supervisor         │
